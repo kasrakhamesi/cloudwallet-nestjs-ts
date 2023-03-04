@@ -1,0 +1,21 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "@app/wallet/(.*)": "<rootDir>/../libs/wallet/src/$1",
+    "@app/wallet": "<rootDir>/../libs/wallet/src",
+    "packages/ethereum/(.*)": "<rootDir>/../libs/ethereum/src/$1",
+    "packages/ethereum": "<rootDir>/../libs/ethereum/src",
+    "packages/tron/(.*)": "<rootDir>/../libs/tron/src/$1",
+    "packages/tron": "<rootDir>/../libs/tron/src"
+  }
+}

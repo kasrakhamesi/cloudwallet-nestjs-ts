@@ -8,7 +8,7 @@ function createSwagger(app: NestFastifyApplication) {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Cloudwallet API')
     .addBearerAuth()
-    .setDescription('API for the clpudwallet')
+    .setDescription('API for the cloudwallet')
     .setVersion('1')
     .build()
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig)

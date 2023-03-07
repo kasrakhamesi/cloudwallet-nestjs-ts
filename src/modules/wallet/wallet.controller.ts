@@ -106,4 +106,18 @@ export class WalletController {
       )
     }
   }
+
+  @Get('blockhains')
+  @ApiParam({
+    name: 'blockchain',
+    type: 'string',
+    required: true,
+    example: 'ethereum'
+  })
+  public getBlockchains() {
+    return {
+      statusCode: 200,
+      data: ['ethereum']
+    }
+  }
 }

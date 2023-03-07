@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 import ethereumWallet, { hdkey } from 'ethereumjs-wallet'
 import {
   IGenerateAddressResponse,
@@ -22,37 +22,49 @@ export class EthereumService implements IWallet {
     mnemonic,
     deriveIndex = 0
   }: IGenerateAddress): Promise<IGenerateAddressResponse> {
-    const seed = await bip39.mnemonicToSeed(mnemonic)
-    const hdwallet = hdkey.fromMasterSeed(seed)
-    const path = `m/44'/60'/0'/0/${deriveIndex}`
-    const wallet = hdwallet.derivePath(path).getWallet()
-    const address = wallet.getChecksumAddressString()
-    const privateKey = wallet.getPrivateKeyString()
-    return {
-      address,
-      privateKey
+    try {
+      const seed = await bip39.mnemonicToSeed(mnemonic)
+      const hdwallet = hdkey.fromMasterSeed(seed)
+      const path = `m/44'/60'/0'/0/${deriveIndex}`
+      const wallet = hdwallet.derivePath(path).getWallet()
+      const address = wallet.getChecksumAddressString()
+      const privateKey = wallet.getPrivateKeyString()
+      return {
+        address,
+        privateKey
+      }
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
   }
   public restoreAddressFromPrivateKey({
     privateKey
   }: IRestoreAddressFromPrivateKey): IRestoreAddressFromPrivateKeyResponse {
-    const prvBuffer =
-      privateKey.length > 65
-        ? Buffer.from(privateKey.substring(2, 66), 'hex')
-        : Buffer.from(privateKey, 'hex')
-    const keyPair = ethereumWallet.fromPrivateKey(prvBuffer)
-    const address = keyPair.getChecksumAddressString()
-    return {
-      address
+    try {
+      const prvBuffer =
+        privateKey.length > 65
+          ? Buffer.from(privateKey.substring(2, 66), 'hex')
+          : Buffer.from(privateKey, 'hex')
+      const keyPair = ethereumWallet.fromPrivateKey(prvBuffer)
+      const address = keyPair.getChecksumAddressString()
+      return {
+        address
+      }
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
   }
   public async getBalance({
     address
   }: IGetBalance): Promise<IGetBalanceResponse> {
-    const value = await this.web3.eth.getBalance(address)
-    const balance = parseFloat(this.web3.utils.fromWei(value, 'ether'))
-    return {
-      balance
+    try {
+      const value = await this.web3.eth.getBalance(address)
+      const balance = parseFloat(this.web3.utils.fromWei(value, 'ether'))
+      return {
+        balance
+      }
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
   }
   public async transfer({
@@ -60,59 +72,61 @@ export class EthereumService implements IWallet {
     toAddress,
     amount
   }: ITransfer): Promise<ITransferResponse> {
-    const from = this.restoreAddressFromPrivateKey({
-      privateKey: fromPrivateKey
-    })
-    const nonce = await this.web3.eth.getTransactionCount(
-      from.address,
-      'pending'
-    )
+    try {
+      const from = this.restoreAddressFromPrivateKey({
+        privateKey: fromPrivateKey
+      })
+      const nonce = await this.web3.eth.getTransactionCount(
+        from.address,
+        'pending'
+      )
 
-    const value = this.web3.utils.toHex(
-      this.web3.utils.toWei(amount.toString(), 'ether')
-    )
+      const value = this.web3.utils.toHex(
+        this.web3.utils.toWei(amount.toString(), 'ether')
+      )
 
-    const maxFee = this.web3.utils.toHex(
-      this.web3.utils.toWei(Number(100).toString(), 'gwei')
-    )
+      const maxFee = this.web3.utils.toHex(
+        this.web3.utils.toWei(Number(100).toString(), 'gwei')
+      )
 
-    const maxPriorityFee = this.web3.utils.toHex(
-      this.web3.utils.toWei(Number(3).toString(), 'gwei')
-    )
+      const maxPriorityFee = this.web3.utils.toHex(
+        this.web3.utils.toWei(Number(3).toString(), 'gwei')
+      )
 
-    const gasLimit = await this.estimateGas(
-      from.address,
-      toAddress,
-      '0x',
-      value,
-      maxFee,
-      maxPriorityFee
-    )
+      const gasLimit = await this.estimateGas(
+        from.address,
+        toAddress,
+        '0x',
+        value,
+        maxFee,
+        maxPriorityFee
+      )
 
-    if (!gasLimit?.isSuccess) throw new Error(gasLimit?.message)
+      const txParams = {
+        nonce: nonce,
+        chainId: 1,
+        type: 2,
+        value: value,
+        gasLimit: gasLimit?.data,
+        maxFeePerGas: maxFee,
+        maxPriorityFeePerGas: maxPriorityFee,
+        to: toAddress
+      }
 
-    const txParams = {
-      nonce: nonce,
-      chainId: 1,
-      type: 2,
-      value: value,
-      gasLimit: gasLimit?.data,
-      maxFeePerGas: maxFee,
-      maxPriorityFeePerGas: maxPriorityFee,
-      to: toAddress
-    }
+      const rawTransaction = await this.web3.eth.accounts.signTransaction(
+        txParams,
+        fromPrivateKey
+      )
 
-    const rawTransaction = await this.web3.eth.accounts.signTransaction(
-      txParams,
-      fromPrivateKey
-    )
+      const transactionResult = await this.web3.eth.sendSignedTransaction(
+        rawTransaction?.rawTransaction
+      )
 
-    const transactionResult = await this.web3.eth.sendSignedTransaction(
-      rawTransaction?.rawTransaction
-    )
-
-    return {
-      transactionId: transactionResult?.transactionHash
+      return {
+        transactionId: transactionResult?.transactionHash
+      }
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
   }
 
@@ -135,14 +149,10 @@ export class EthereumService implements IWallet {
         maxPriorityFeePerGas
       })
       return {
-        isSuccess: true,
         data: estimateGas
       }
     } catch (e) {
-      return {
-        isSuccess: false,
-        message: e?.message || String(e)
-      }
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
   }
 }

@@ -9,9 +9,10 @@ import {
   ITransferResponse
 } from '@localTypes/wallet.interface'
 import { IBlockchain } from '@localTypes/blockchains.interface'
-import { Injectable } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 import { EthereumService } from '@packages/ethereum/ethereum.service'
 import { IWallet } from './wallet.interface'
+const bip39 = require('bip39')
 
 @Injectable()
 export class WalletService implements IWallet {
@@ -20,6 +21,8 @@ export class WalletService implements IWallet {
     blockchain: IBlockchain,
     { mnemonic, deriveIndex }: IGenerateAddress
   ): Promise<IGenerateAddressResponse> {
+    if (!bip39.validateMnemonic(mnemonic))
+      throw new HttpException('Invalid mnemonic', HttpStatus.BAD_REQUEST)
     return this[`${blockchain}Service`].generateAddress({
       mnemonic,
       deriveIndex
@@ -44,13 +47,12 @@ export class WalletService implements IWallet {
 
   public async transfer(
     blockchain: IBlockchain,
-    { fromPrivateKey, toAddress, amount, contract }: ITransfer
+    { fromPrivateKey, toAddress, amount }: ITransfer
   ): Promise<ITransferResponse> {
     return this[`${blockchain}Service`].transfer({
       fromPrivateKey,
       toAddress,
-      amount,
-      contract
+      amount
     })
   }
 }

@@ -30,7 +30,6 @@ export interface ITransfer {
   fromPrivateKey: string
   toAddress: string
   amount: number
-  contract: string | null | undefined
 }
 
 export interface ITransferResponse {

@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common'
+import { Controller, Get, Post, Body, Param } from '@nestjs/common'
 import { WalletService } from './wallet.service'
 import {
   GenerateAddressDto,
-  RestoreAddressFromPrivateKeyDto
+  RestoreAddressFromPrivateKeyDto,
+  TransferDto
 } from './dto/wallet.dto'
 import { ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   IGenerateAddressResponse,
   IGetBalance,
   IGetBalanceResponse,
-  IRestoreAddressFromPrivateKeyResponse
+  IRestoreAddressFromPrivateKeyResponse,
+  ITransferResponse
 } from '@localTypes/wallet.interface'
 import { IBlockchain } from '@localTypes/blockchains.interface'
 
@@ -82,6 +84,25 @@ export class WalletController {
         {
           address: address.toString()
         }
+      )
+    }
+  }
+
+  @Post('blockchain/:blockchain/address/transfer')
+  @ApiParam({
+    name: 'blockchain',
+    type: 'string',
+    required: true,
+    example: 'ethereum'
+  })
+  public async transfer(
+    @Param('blockchain') blockchain: IBlockchain,
+    @Body() transferDto: TransferDto
+  ) {
+    return {
+      statusCode: 200,
+      data: <ITransferResponse>(
+        await this.walletService.transfer(blockchain, transferDto)
       )
     }
   }

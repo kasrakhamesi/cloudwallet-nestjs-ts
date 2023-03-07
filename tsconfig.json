@@ -10,6 +10,7 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "esModuleInterop": true,
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -18,6 +19,9 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
+      "@localTypes/*": ["src/types/*"],
+      "@modules/*": ["src/modules/*"],
+      "@packages/*": ["src/packages/*"]
     }
   }
 }

@@ -1,26 +1,56 @@
+import {
+  IGenerateAddress,
+  IGenerateAddressResponse,
+  IGetBalance,
+  IGetBalanceResponse,
+  IRestoreAddressFromPrivateKey,
+  IRestoreAddressFromPrivateKeyResponse,
+  ITransfer,
+  ITransferResponse
+} from '@localTypes/wallet.interface'
+import { IBlockchain } from '@localTypes/blockchains.interface'
 import { Injectable } from '@nestjs/common'
-import { CreateWalletDto } from './dto/create-wallet.dto'
-import { UpdateWalletDto } from './dto/update-wallet.dto'
+import { EthereumService } from '@packages/ethereum/ethereum.service'
+import { IWallet } from './wallet.interface'
 
 @Injectable()
-export class WalletService {
-  create(createWalletDto: CreateWalletDto) {
-    return 'This action adds a new wallet'
+export class WalletService implements IWallet {
+  constructor(private readonly ethereumService: EthereumService) {}
+  public async generateAddress(
+    blockchain: IBlockchain,
+    { mnemonic, deriveIndex }: IGenerateAddress
+  ): Promise<IGenerateAddressResponse> {
+    return this[`${blockchain}Service`].generateAddress({
+      mnemonic,
+      deriveIndex
+    })
   }
 
-  findAll() {
-    return `This action returns all wallet`
+  public async restoreAddressFromPrivateKey(
+    blockchain: IBlockchain,
+    { privateKey }: IRestoreAddressFromPrivateKey
+  ): Promise<IRestoreAddressFromPrivateKeyResponse> {
+    return this[`${blockchain}Service`].restoreAddressFromPrivateKey({
+      privateKey
+    })
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} wallet`
+  public async getBalance(
+    blockchain: IBlockchain,
+    { address }: IGetBalance
+  ): Promise<IGetBalanceResponse> {
+    return this[`${blockchain}Service`].getBalance({ address })
   }
 
-  update(id: number, updateWalletDto: UpdateWalletDto) {
-    return `This action updates a #${id} wallet`
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} wallet`
+  public async transfer(
+    blockchain: IBlockchain,
+    { fromPrivateKey, toAddress, amount, contract }: ITransfer
+  ): Promise<ITransferResponse> {
+    return this[`${blockchain}Service`].transfer({
+      fromPrivateKey,
+      toAddress,
+      amount,
+      contract
+    })
   }
 }

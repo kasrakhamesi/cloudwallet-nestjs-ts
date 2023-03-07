@@ -1,6 +1,8 @@
+import { IBlockchain } from './blockchains.interface'
+
 export interface IGenerateAddress {
   mnemonic: string
-  deriveIndex: number
+  deriveIndex: number | null | undefined
 }
 
 export interface IGetBalance {

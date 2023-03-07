@@ -10,46 +10,17 @@ import {
   IGetBalanceResponse,
   ITransfer,
   ITransferResponse
-} from '../wallet.interface'
-import bip39 from 'bip39'
+} from '@localTypes/wallet.interface'
 import Web3 from 'web3'
-const web3 = new Web3()
-
-const estimateGas = async (
-  from: string,
-  to: string,
-  data: string | null | undefined,
-  value: string | number,
-  maxFeePerGas: string | number,
-  maxPriorityFeePerGas: string | number
-) => {
-  try {
-    const estimateGas = await web3.eth.estimateGas({
-      from,
-      to,
-      value,
-      data,
-      maxFeePerGas,
-      maxPriorityFeePerGas
-    })
-    return {
-      isSuccess: true,
-      data: estimateGas
-    }
-  } catch (e) {
-    return {
-      isSuccess: false,
-      message: e?.message || String(e)
-    }
-  }
-}
+const bip39 = require('bip39')
 
 @Injectable()
 export class EthereumService implements IWallet {
-  constructor() {}
+  private web3 = new Web3('http://75.119.132.41:8545')
+
   public async generateAddress({
     mnemonic,
-    deriveIndex
+    deriveIndex = 0
   }: IGenerateAddress): Promise<IGenerateAddressResponse> {
     const seed = await bip39.mnemonicToSeed(mnemonic)
     const hdwallet = hdkey.fromMasterSeed(seed)
@@ -78,8 +49,8 @@ export class EthereumService implements IWallet {
   public async getBalance({
     address
   }: IGetBalance): Promise<IGetBalanceResponse> {
-    const value = await web3.eth.getBalance(address)
-    const balance = parseFloat(web3.utils.fromWei(value, 'ether'))
+    const value = await this.web3.eth.getBalance(address)
+    const balance = parseFloat(this.web3.utils.fromWei(value, 'ether'))
     return {
       balance
     }
@@ -92,19 +63,24 @@ export class EthereumService implements IWallet {
     const from = this.restoreAddressFromPrivateKey({
       privateKey: fromPrivateKey
     })
-    const nonce = await web3.eth.getTransactionCount(from.address, 'pending')
-
-    const value = web3.utils.toHex(web3.utils.toWei(amount.toString(), 'ether'))
-
-    const maxFee = web3.utils.toHex(
-      web3.utils.toWei(Number(100).toString(), 'gwei')
+    const nonce = await this.web3.eth.getTransactionCount(
+      from.address,
+      'pending'
     )
 
-    const maxPriorityFee = web3.utils.toHex(
-      web3.utils.toWei(Number(3).toString(), 'gwei')
+    const value = this.web3.utils.toHex(
+      this.web3.utils.toWei(amount.toString(), 'ether')
     )
 
-    const gasLimit = await estimateGas(
+    const maxFee = this.web3.utils.toHex(
+      this.web3.utils.toWei(Number(100).toString(), 'gwei')
+    )
+
+    const maxPriorityFee = this.web3.utils.toHex(
+      this.web3.utils.toWei(Number(3).toString(), 'gwei')
+    )
+
+    const gasLimit = await this.estimateGas(
       from.address,
       toAddress,
       '0x',
@@ -126,17 +102,47 @@ export class EthereumService implements IWallet {
       to: toAddress
     }
 
-    const rawTransaction = await web3.eth.accounts.signTransaction(
+    const rawTransaction = await this.web3.eth.accounts.signTransaction(
       txParams,
       fromPrivateKey
     )
 
-    const transactionResult = await web3.eth.sendSignedTransaction(
+    const transactionResult = await this.web3.eth.sendSignedTransaction(
       rawTransaction?.rawTransaction
     )
 
     return {
       transactionId: transactionResult?.transactionHash
+    }
+  }
+
+  // utils
+  private estimateGas = async (
+    from: string,
+    to: string,
+    data: string | null | undefined,
+    value: string | number,
+    maxFeePerGas: string | number,
+    maxPriorityFeePerGas: string | number
+  ) => {
+    try {
+      const estimateGas = await this.web3.eth.estimateGas({
+        from,
+        to,
+        value,
+        data,
+        maxFeePerGas,
+        maxPriorityFeePerGas
+      })
+      return {
+        isSuccess: true,
+        data: estimateGas
+      }
+    } catch (e) {
+      return {
+        isSuccess: false,
+        message: e?.message || String(e)
+      }
     }
   }
 }

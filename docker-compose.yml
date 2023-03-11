@@ -5,7 +5,7 @@ services:
     build: .
     restart: always
     ports:
-      - 3050:3050
+      - 3001:3001
     networks:
       - cloudwallet_network
 

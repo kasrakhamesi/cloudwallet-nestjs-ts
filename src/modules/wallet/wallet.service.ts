@@ -8,7 +8,9 @@ import {
   ITransactions,
   ITransactionsResponse,
   ITransfer,
-  ITransferResponse
+  ITransferResponse,
+  ITransaction,
+  ITransactionResponse
 } from '@localTypes/wallet.interface'
 import { IBlockchain } from '@localTypes/blockchains.interface'
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
@@ -73,6 +75,14 @@ export class WalletService implements IWallet {
     return await this[`${blockchain}Service`].transactions({
       address,
       contract
+    })
+  }
+  public async transaction(
+    blockchain: IBlockchain,
+    { transactionId }: ITransaction
+  ): Promise<ITransactionResponse> {
+    return await this[`${blockchain}Service`].transaction({
+      transactionId
     })
   }
 }

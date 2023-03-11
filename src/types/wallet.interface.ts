@@ -17,6 +17,21 @@ export interface ITransactions {
   contract: string | null | undefined
 }
 
+export interface ITransaction {
+  transactionId: string
+}
+
+export interface ITransactionResponse {
+  transactionId: string
+  timestamp: number
+  value: number
+  confirmations: number
+  from: string
+  to: string
+  contract: string | null | undefined
+  error: boolean
+}
+
 export interface ITransactionsResponse {
   transactionId: string
   timestamp: number
@@ -62,4 +77,5 @@ export interface IWallet {
   getBalance: ({}: IGetBalance) => Promise<IGetBalanceResponse>
   transfer: ({}: ITransfer) => Promise<ITransferResponse>
   transactions: ({}: ITransactions) => Promise<ITransactionsResponse[]>
+  transaction: ({}: ITransaction) => Promise<ITransactionResponse>
 }

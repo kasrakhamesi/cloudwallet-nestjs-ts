@@ -11,7 +11,9 @@ import {
   ITransfer,
   ITransferResponse,
   ITransactions,
-  ITransactionsResponse
+  ITransactionsResponse,
+  ITransaction,
+  ITransactionResponse
 } from '@localTypes/wallet.interface'
 import Web3 from 'web3'
 import axios from 'axios'
@@ -79,7 +81,7 @@ export class EthereumService implements IWallet {
       ]
       const contractData = new this.web3.eth.Contract(ABI, contract)
       const balance = await contractData.methods.balanceOf(address).call()
-      return { balance }
+      return { balance: parseFloat(balance) }
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
@@ -205,7 +207,7 @@ export class EthereumService implements IWallet {
         ? `http://75.119.132.41:3010/v1/address/${address}/contract-txs/${contract}`
         : `http://75.119.132.41:3010/v1/address/${address}/basic-txs`
 
-      const r = await axios({
+      const { data } = await axios({
         method: 'get',
         url,
         headers: {
@@ -215,7 +217,7 @@ export class EthereumService implements IWallet {
 
       const lastBlack = await this.web3.eth.getBlockNumber()
 
-      return r.data.data.transactions
+      return data.data.transactions
         .filter((item: any) =>
           item.error === '' && contract
             ? item.contract !== null
@@ -223,15 +225,48 @@ export class EthereumService implements IWallet {
         )
         .map((item: any) => {
           return {
-            transactionId: item._id,
+            transactionId: item.id,
             timestamp: parseInt(item.timestamp),
-            value: parseFloat(item.contract.value),
+            value: parseFloat(item?.contract?.value || item.value),
             confirmations: lastBlack - parseInt(item.blockNumber),
             type: item.from === address ? 'send' : 'receive',
-            contract: item.contract,
+            contract: item?.contract?.address || null,
             error: item.error === '' ? false : true
           }
         })
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
+    }
+  }
+
+  public async transaction({
+    transactionId
+  }: ITransaction): Promise<ITransactionResponse> {
+    try {
+      const url = `http://75.119.132.41:3010/v1/transaction/${transactionId}`
+
+      const { data } = await axios({
+        method: 'get',
+        url,
+        headers: {
+          'content-type': 'application/json'
+        }
+      })
+
+      const lastBlack = await this.web3.eth.getBlockNumber()
+      const transaction = data.data
+      return {
+        transactionId: transaction.id,
+        timestamp: parseInt(transaction.timestamp),
+        value: parseFloat(
+          transaction.contract ? transaction.contract.value : transaction.value
+        ),
+        confirmations: lastBlack - parseInt(transaction.blockNumber),
+        from: transaction.from,
+        to: transaction?.contract?.to || transaction.to,
+        contract: transaction?.contract?.address || null,
+        error: transaction.error === '' ? false : true
+      }
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }

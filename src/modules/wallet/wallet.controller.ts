@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common'
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common'
 import { WalletService } from './wallet.service'
 import {
   GenerateAddressDto,
@@ -8,14 +8,13 @@ import {
 import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
 import {
   IGenerateAddressResponse,
-  IGetBalance,
   IGetBalanceResponse,
   IRestoreAddressFromPrivateKeyResponse,
+  ITransactionResponse,
   ITransactionsResponse,
   ITransferResponse
 } from '@localTypes/wallet.interface'
 import { IBlockchain } from '@localTypes/blockchains.interface'
-import { Query } from '@nestjs/common/decorators/http/route-params.decorator'
 
 @ApiTags('Wallet')
 @Controller('wallet')
@@ -40,9 +39,8 @@ export class WalletController {
       { blockchain: 'ethereum' },
       generateAddressDto
     )
-    console.log(address)
     return {
-      statusCode: 200,
+      statusCode: 201,
       data: [
         {
           blockchain: 'ethereum',
@@ -65,7 +63,7 @@ export class WalletController {
     @Body() generateAddressDto: GenerateAddressDto
   ) {
     return {
-      statusCode: 200,
+      statusCode: 201,
       data: <IGenerateAddressResponse>(
         await this.walletService.generateAddress(blockchain, generateAddressDto)
       )
@@ -84,7 +82,7 @@ export class WalletController {
     @Body() restoreAddressFromPrivateKeyDto: RestoreAddressFromPrivateKeyDto
   ) {
     return {
-      statusCode: 200,
+      statusCode: 201,
       data: <IRestoreAddressFromPrivateKeyResponse>(
         await this.walletService.restoreAddressFromPrivateKey(
           blockchain,
@@ -156,7 +154,7 @@ export class WalletController {
     @Query('chain') chain: string
   ) {
     return {
-      statusCode: 200,
+      statusCode: 201,
       data: <ITransferResponse>await this.walletService.transfer(blockchain, {
         fromPrivateKey: transferDto.fromPrivateKey,
         toAddress: transferDto.toAddress,
@@ -198,6 +196,35 @@ export class WalletController {
         {
           address,
           contract
+        }
+      )
+    }
+  }
+
+  @Get('blockchain/:blockchain/transaction/:transaction')
+  @ApiParam({
+    name: 'transaction',
+    type: 'string',
+    required: true,
+    example:
+      '0x9037569543b49b39fac28762811168a6a20d8e749c097ed232ffa5ba0095ff84'
+  })
+  @ApiParam({
+    name: 'blockchain',
+    type: 'string',
+    required: true,
+    example: 'ethereum'
+  })
+  public async transaction(
+    @Param('blockchain') blockchain: IBlockchain,
+    @Param('transaction') transaction: string
+  ) {
+    return {
+      statusCode: 200,
+      data: <ITransactionResponse>await this.walletService.transaction(
+        blockchain,
+        {
+          transactionId: transaction
         }
       )
     }

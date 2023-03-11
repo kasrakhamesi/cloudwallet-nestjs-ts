@@ -15,4 +15,4 @@ COPY . .
 # Build app
 ENTRYPOINT [ "yarn", "run", "start" ]
 
-EXPOSE 3050
+EXPOSE 3001

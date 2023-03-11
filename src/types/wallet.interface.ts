@@ -1,5 +1,3 @@
-import { IBlockchain } from './blockchains.interface'
-
 export interface IGenerateAddress {
   mnemonic: string
   deriveIndex: number | null | undefined
@@ -7,10 +5,26 @@ export interface IGenerateAddress {
 
 export interface IGetBalance {
   address: string
+  contract: string | null | undefined
 }
 
 export interface IGetBalanceResponse {
   balance: number
+}
+
+export interface ITransactions {
+  address: string
+  contract: string | null | undefined
+}
+
+export interface ITransactionsResponse {
+  transactionId: string
+  timestamp: number
+  value: number
+  confirmations: number
+  type: string
+  contract: string | null | undefined
+  error: boolean
 }
 
 export interface IGenerateAddressResponse {
@@ -29,7 +43,9 @@ export interface IRestoreAddressFromPrivateKeyResponse {
 export interface ITransfer {
   fromPrivateKey: string
   toAddress: string
-  amount: number
+  value: number
+  contract: string | null | undefined
+  chain: string | null | undefined
 }
 
 export interface ITransferResponse {
@@ -45,4 +61,5 @@ export interface IWallet {
     | IRestoreAddressFromPrivateKeyResponse
   getBalance: ({}: IGetBalance) => Promise<IGetBalanceResponse>
   transfer: ({}: ITransfer) => Promise<ITransferResponse>
+  transactions: ({}: ITransactions) => Promise<ITransactionsResponse[]>
 }

@@ -9,9 +9,12 @@ import {
   IGetBalance,
   IGetBalanceResponse,
   ITransfer,
-  ITransferResponse
+  ITransferResponse,
+  ITransactions,
+  ITransactionsResponse
 } from '@localTypes/wallet.interface'
 import Web3 from 'web3'
+import axios from 'axios'
 const bip39 = require('bip39')
 
 @Injectable()
@@ -55,14 +58,28 @@ export class EthereumService implements IWallet {
     }
   }
   public async getBalance({
-    address
+    address,
+    contract
   }: IGetBalance): Promise<IGetBalanceResponse> {
     try {
-      const value = await this.web3.eth.getBalance(address)
-      const balance = parseFloat(this.web3.utils.fromWei(value, 'ether'))
-      return {
-        balance
+      if (!contract) {
+        const balance = await this.web3.eth.getBalance(address)
+        return {
+          balance: parseFloat(balance)
+        }
       }
+      const ABI: any = [
+        {
+          constant: true,
+          inputs: [{ name: '_owner', type: 'address' }],
+          name: 'balanceOf',
+          outputs: [{ name: 'balance', type: 'uint256' }],
+          type: 'function'
+        }
+      ]
+      const contractData = new this.web3.eth.Contract(ABI, contract)
+      const balance = await contractData.methods.balanceOf(address).call()
+      return { balance }
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }
@@ -70,7 +87,9 @@ export class EthereumService implements IWallet {
   public async transfer({
     fromPrivateKey,
     toAddress,
-    amount
+    value,
+    contract,
+    chain
   }: ITransfer): Promise<ITransferResponse> {
     try {
       const from = this.restoreAddressFromPrivateKey({
@@ -81,9 +100,44 @@ export class EthereumService implements IWallet {
         'pending'
       )
 
-      const value = this.web3.utils.toHex(
-        this.web3.utils.toWei(amount.toString(), 'ether')
-      )
+      let data = '0x'
+
+      if (contract) {
+        const ABI: any = [
+          {
+            constant: false,
+            inputs: [
+              {
+                name: '_to',
+                type: 'address'
+              },
+              {
+                name: '_value',
+                type: 'uint256'
+              }
+            ],
+            name: 'transfer',
+            outputs: [
+              {
+                name: '',
+                type: 'bool'
+              }
+            ],
+            type: 'function'
+          }
+        ]
+
+        const contractData = new this.web3.eth.Contract(ABI, contract)
+        data = await contractData.methods
+          .transfer(toAddress, value) // TODO ZARD DAR DECIMAL
+          .encodeABI()
+      }
+
+      const newValue = contract
+        ? this.web3.utils.toHex(
+            this.web3.utils.toWei(Number(0).toString(), 'ether')
+          )
+        : value
 
       const maxFee = this.web3.utils.toHex(
         this.web3.utils.toWei(Number(100).toString(), 'gwei')
@@ -96,22 +150,34 @@ export class EthereumService implements IWallet {
       const gasLimit = await this.estimateGas(
         from.address,
         toAddress,
-        '0x',
+        data,
         value,
         maxFee,
         maxPriorityFee
       )
 
-      const txParams = {
-        nonce: nonce,
-        chainId: 1,
-        type: 2,
-        value: value,
-        gasLimit: gasLimit?.data,
-        maxFeePerGas: maxFee,
-        maxPriorityFeePerGas: maxPriorityFee,
-        to: toAddress
-      }
+      const txParams = contract
+        ? {
+            nonce,
+            chainId: chain ? parseInt(chain) : 1,
+            type: 2,
+            value: newValue,
+            data,
+            gasLimit: gasLimit?.data,
+            maxFeePerGas: maxFee,
+            maxPriorityFeePerGas: maxPriorityFee,
+            to: contract
+          }
+        : {
+            nonce,
+            chainId: chain ? parseInt(chain) : 1,
+            type: 2,
+            value: newValue,
+            gasLimit: gasLimit?.data,
+            maxFeePerGas: maxFee,
+            maxPriorityFeePerGas: maxPriorityFee,
+            to: toAddress
+          }
 
       const rawTransaction = await this.web3.eth.accounts.signTransaction(
         txParams,
@@ -125,6 +191,47 @@ export class EthereumService implements IWallet {
       return {
         transactionId: transactionResult?.transactionHash
       }
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
+    }
+  }
+
+  public async transactions({
+    address,
+    contract
+  }: ITransactions): Promise<ITransactionsResponse[]> {
+    try {
+      const url = contract
+        ? `http://75.119.132.41:3010/v1/address/${address}/contract-txs/${contract}`
+        : `http://75.119.132.41:3010/v1/address/${address}/basic-txs`
+
+      const r = await axios({
+        method: 'get',
+        url,
+        headers: {
+          'content-type': 'application/json'
+        }
+      })
+
+      const lastBlack = await this.web3.eth.getBlockNumber()
+
+      return r.data.data.transactions
+        .filter((item: any) =>
+          item.error === '' && contract
+            ? item.contract !== null
+            : item.contract === null
+        )
+        .map((item: any) => {
+          return {
+            transactionId: item._id,
+            timestamp: parseInt(item.timestamp),
+            value: parseFloat(item.contract.value),
+            confirmations: lastBlack - parseInt(item.blockNumber),
+            type: item.from === address ? 'send' : 'receive',
+            contract: item.contract,
+            error: item.error === '' ? false : true
+          }
+        })
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
     }

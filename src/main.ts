@@ -27,6 +27,6 @@ async function bootstrap() {
   })
   createSwagger(app)
   addPipes(app)
-  await app.listen(3000)
+  await app.listen(3001)
 }
 bootstrap()

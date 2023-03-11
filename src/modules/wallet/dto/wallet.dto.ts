@@ -45,7 +45,7 @@ export class TransferDto {
   toAddress: string
 
   @ApiProperty({
-    description: 'amount',
+    description: 'value',
     example: 1
   })
   @IsNotEmpty({ message: 'مقدار نمیتواند خالی باشد' })
@@ -53,5 +53,5 @@ export class TransferDto {
     { allowInfinity: false, allowNaN: false },
     { message: 'مقدار باید عدد باشد' }
   )
-  amount: number
+  value: number
 }

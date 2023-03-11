@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - 3050:3050
+    networks:
+      - cloudwallet_network
+
+networks:
+  cloudwallet_network:
